@@ -5,7 +5,8 @@
 # Group B from population with mean = 1010, sd = 20
 # This equates to a Cohen's d of .5 as (1010-1000)/20 so a medium effect size
 
-# First let's plot an approximation of the population for each sample 
+# First let's plot an approximation of the population for each sample - let's
+# sample 1000 people from each group
 
 # Now let's sample 50 individuals from each population
 
