@@ -1,5 +1,5 @@
 ---
-title: "Additional regression"
+title: "Multiple regression"
 author: "Andrew Stewart"
 date: "24/06/2019"
 output: html_document
@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 So far in the context of the general linear model we looked at cases with one 
 predictor variable.
 
-#1. Multiple Regression (Standard Method)
+# Multiple Regression (Standard Method) ####
 
 In standard multiple regression all the independent variables (IVs) are entered 
 into the equation and evaluated for their contribution at the same time. Let’s 
@@ -42,7 +42,7 @@ library(car) # Needed for VIF calculation
 
 Let's read in the data.
 
-```{r, echo=FALSE, message=FALSE}
+```{r, message=FALSE}
 MRes_tut2 <- read_csv("https://raw.githubusercontent.com/ajstewartlang/Psychology_MRes_Stats_R_Course/master/Lecture%205/MRes_tut2.csv")
 ```
 
@@ -144,7 +144,7 @@ We'd write our equation as something like:
 
 Spelled correct = -209.44 + 1.10(age) + 0.38(std_RA) + 1.21(std_SPELL) + residual
 
-#2. Statistical regression
+# Statistical Regression ####
 
 We can also do stepwise regression - forwards is when you start with the null 
 model and predictors are added until they don't explain any more variance, 
