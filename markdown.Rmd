@@ -1,0 +1,291 @@
+---
+title: "CarpentryConnect2019_R"
+author: "Andrew Stewart"
+date: "24/06/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(broom)
+library(afex)
+library(emmeans)
+```
+
+# Main task 1 - Simulate data and run t-tests
+
+Let's imagine we have data from two different groups measuring reaction time (our
+dependent variable). Group A performed the task under Condition A, Group B 
+under Condition B.
+
+Group A are from a population with a mean = 1000, sd = 20 while
+Group B are from a population with a mean = 1010, sd = 20
+
+The difference we are investigating equates to a Cohen's d of .5 
+as (1010-1000)/20 = .5.  This is known as a medium effect size.
+
+First let's plot an approximation of the population for each sample. Let's
+sample 1000 people from each group. Always remember to `set.seed()` to ensure
+things are reproducible.
+
+```{r}
+set.seed(1234)
+DV <- c(rnorm(10000, 1000, 20), rnorm(10000, 1010, 20))
+condition <- c(rep("Condition_A", 10000), rep("Condition_B", 10000))
+my_data <- tibble(condition, DV)
+```
+
+Let's plot the data. Below we're plotting two histogrames over each other.
+
+```{r}
+my_data %>%
+  ggplot(aes(x = DV, fill = condition, alpha = .5)) +
+  geom_histogram(data = filter(my_data, condition == "Condition_A"), bins = 50) +
+  geom_histogram(data = filter(my_data, condition == "Condition_B"), bins = 50) +
+  guides(fill = FALSE, alpha = FALSE)
+```
+
+Now let's sample 50 individuals from each population. Again, don't forget to `set.seed()`
+
+```{r}
+set.seed(1234)
+DV <- c(rnorm(50, 1000, 20), rnorm(50, 1010, 20))
+condition <- c(rep("Condition_A", 50), rep("Condition_B", 50))
+my_data <- tibble(condition, DV)
+```
+
+Plot the data.
+
+```{r}
+my_data %>%
+  ggplot(aes(x = DV, fill = condition)) +
+  geom_histogram(data = filter(my_data, condition == "Condition_A"), bins = 10) +
+  geom_histogram(data = filter(my_data, condition == "Condition_B"), bins = 10) +
+  guides(fill = FALSE, alpha = FALSE)
+```
+
+Now let's generate some summary statistics - in this case the mean and standard
+deviation grouped by `condition`.
+
+```{r}
+my_data %>%
+  group_by(condition) %>%
+  summarise(mean_dv = mean(DV), sd_dv = sd(DV))
+```
+
+Run a t-test to see if difference Group A vs Group B is significant.  It is as
+p < .05
+
+```{r}
+t.test(my_data[condition == "Condition_A",]$DV, my_data[condition == "Condition_B",]$DV)
+```
+
+Can we get the output in tidy format? Answer: yes...
+
+```{r}
+tidy(t.test(my_data[condition == "Condition_A",]$DV, 
+            my_data[condition == "Condition_B",]$DV))
+```
+
+What if we ran 1,000 simulations? Let's create the data first.
+
+```{r}
+all_data <- NULL
+set.seed(1234)
+for (i in 1:1000) {
+  DV <- c(rnorm(50, 1000, 20), rnorm(50, 1010, 20))
+  condition <- c(rep("Condition_A", 50), rep("Condition_B", 50))
+  my_data <- tibble(condition, DV, i)
+  all_data <- rbind(all_data, my_data)
+}
+```
+
+Now let's run 1,000 t-tests.
+
+```{r}
+all_results <- NULL
+for (n in 1:1000) {
+  my_data_filt <- all_data %>% filter(i == n)
+  result <- tidy(t.test(my_data_filt[condition == "Condition_A",]$DV, 
+                        my_data_filt[condition == "Condition_B",]$DV))
+  all_results <- rbind(result, all_results)
+}
+```
+
+Let's look at the first few lines of our new tibble corresponding to the t-tests.
+
+```{r}
+head(all_results)
+```
+
+How many of these t-tests detect an effect?
+
+```{r}
+count(all_results %>% filter(p.value < .05))
+```
+
+We have 683 significant results out of 1000 simulations - so our experimental 
+power with N = 50 per group to detect a medium effect size (d = .5) is around 
+68%. So, 32% of the time we fail to detect the effect even though it is present 
+in the population we are sampling from.
+
+# Main task 2 - Linear model with the built-in mtcars dataset 
+
+For our dataset of cars, is mile per gallon (mpg) predicted by horsepower (hp)?
+
+First we build our linear model. Don't forget the assumptions that underlie 
+this approach - firstly, we are assuming that the relationship to be modelled
+is linear. We also assume that each observation is independent of each other
+observation - violation of this leads to pseudo-replication and an invalid
+model.
+
+```{r}
+model <- lm(mpg ~ hp, data = mtcars)
+```
+
+Let's examine the model parameters.  The intercept tells us where our line crosses
+the y-axis when x (hp) is equal to zero.  The cofficient estimate associated with 
+hp tells us about the slope of the line - or by how many units y will change for 
+each one unit change in x (hp). In this case, as hp increases by 1, fuel 
+economy drop by 0.06823.
+
+```{r}
+summary(model)
+```
+
+Are we violating any assumptions?
+
+```{r}
+plot(model)
+```
+
+We are violating some assumptions as the residuals do not look normal. Let's 
+remove the two likely outliers which are 'Maserati Bora', 'Toyota Corolla', 
+and 'Lotus Europa'.
+
+We need to convert the rownames to a column variable in order to filter via the 
+following tidyverse approach.
+
+```{r}
+renamed_mtcars <- mtcars %>%
+  rownames_to_column()
+
+filtered_mtcars <- filter(renamed_mtcars, (rowname != ("Maserati Bora")) & 
+                            (rowname != ("Lotus Europa")) &
+                            (rowname != ("Toyota Corolla")))
+```
+
+We can now create a new linear model based on the filtered dataset. Again, we will 
+check the model parameters and the assumptions.
+
+```{r}
+model <- lm(mpg ~ hp, data = filtered_mtcars)
+summary(model)
+plot(model)
+```
+
+Plot the data.
+
+```{r}
+filtered_mtcars %>% 
+  ggplot(aes(x = hp, y = mpg)) + 
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+Build another model which simply corresponds to the mean. 
+
+```{r}
+model_null <- lm(mpg ~ 1, data = filtered_mtcars)
+```
+
+Visualise the mean as a model of our data and the linear model as a model of
+our data.
+
+```{r}
+mean_intercept <- mean(filtered_mtcars$mpg)
+
+filtered_mtcars %>% 
+  ggplot(aes(x = hp, y = mpg)) + 
+  geom_point() +
+  geom_hline(yintercept = mean_intercept, colour = "red")
+
+filtered_mtcars %>% 
+  ggplot(aes(x = hp, y = mpg)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_hline(yintercept = mean_intercept, colour = "red", size = 1)
+```
+
+Do the two models differ from each other?
+
+```{r}
+anova(model, model_null)
+```
+
+Answer is 'yes' the models differ - the one with the lower RSS (residual sum of squares) 
+is the better fit under the OLS (Ordinary Least Squares) approach.
+
+Let's generate some descriptives and visualise via `geom_boxplot()`.
+
+```{r}
+filtered_mtcars %>%
+  group_by(cyl) %>%
+  summarise(mean = mean(mpg), sd = sd(mpg))
+
+filtered_mtcars %>%
+  group_by(cyl) %>%
+  ggplot(aes(x = cyl, y = mpg, group = cyl, fill = cyl)) +
+  geom_boxplot() +
+  guides(fill = FALSE)
+```
+
+Now we're going to conduct an analysis of variance (ANOVA) with one of our 
+variables now set as a factor. We will use aov_4() from the afex package to 
+build our ANOVA model. For anything but the simplest designs, the built-in
+`aov` function in Base R may mislead as it uses what's known as dummy coding
+and Type I Sums of Squares.  This can make interaction effects hard to interpret.
+The afex packages automatically used contrast coding and Type III Sums of Squares
+in the evaluation of the different model components (i.e., the factors).
+
+We need to convert cyl to a factor first. The we build our model and generate
+the output.  The `nice()` funciton produces the ANOVA output in the format
+we probably want - but if not, we can also use `summary()`
+
+```{r}
+filtered_mtcars$cyl <- as.factor(filtered_mtcars$cyl) 
+
+model_ANOVA <- aov_4(mpg ~ cyl + (1 | rowname), data = filtered_mtcars)
+nice(model_ANOVA)
+summary(model_ANOVA)
+```
+
+We have a significant difference somewhere between our conditions - the F is the 
+ratio of variance explained by our model to the variance not explained by our 
+model.  We now need to conduct pairwise comparisons to determine where the 
+difference lies as ANOVA on its own cannot tell us this for cases where factors
+have > 2 levels (or if you have interactions between factors).
+
+```{r}
+emmeans(model_ANOVA, pairwise ~ cyl)
+```
+
+Let's finish by visualising the data we conducted the ANOVA over - but this time
+with a violin plot so we can see the shape of the distribution of our data
+
+```{r}
+filtered_mtcars %>%
+  ggplot(aes(x = cyl, y = mpg, fill = cyl)) +
+  geom_violin() +
+  stat_summary(fun.data = "mean_cl_boot") +
+  labs(x = "Number of Cylinders", y = "MPG", 
+       title = "Plot of MPG against Number of Cylinders", 
+       subtitle = "mtcars dataset filtered") +
+  guides(fill = FALSE)
+```
+
+
