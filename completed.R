@@ -35,6 +35,10 @@ my_data %>%
 # Run t-test ####
 t.test(my_data[condition == "Condition_A",]$DV, my_data[condition == "Condition_B",]$DV)
 
+# Can we get the output in tidy format? Answer: yes...
+tidy(t.test(my_data[condition == "Condition_A",]$DV, 
+            my_data[condition == "Condition_B",]$DV))
+
 # Simulate 1000 datasets ####
 all_data <- NULL
 
@@ -63,6 +67,9 @@ count(all_results %>% filter(p.value < .05))
 # use the built in mtcars data set
 model <- lm(mpg ~ hp, data = mtcars)
 summary(model)
+
+# Are we violating any assumptions?
+plot(model)
 
 renamed_mtcars <- mtcars %>%
   rownames_to_column()
