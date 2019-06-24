@@ -230,18 +230,13 @@ anova(model, model_null)
 Answer is 'yes' the models differ - the one with the lower RSS (residual sum of squares) 
 is the better fit under the OLS (Ordinary Least Squares) approach.
 
-Let's generate some descriptives and visualise via `geom_boxplot()`.
+Let's generate some descriptives.
 
 ```{r}
 filtered_mtcars %>%
   group_by(cyl) %>%
   summarise(mean = mean(mpg), sd = sd(mpg))
 
-filtered_mtcars %>%
-  group_by(cyl) %>%
-  ggplot(aes(x = cyl, y = mpg, group = cyl, fill = cyl)) +
-  geom_boxplot() +
-  guides(fill = FALSE)
 ```
 
 Now we're going to conduct an analysis of variance (ANOVA) with one of our 
@@ -264,7 +259,7 @@ nice(model_ANOVA)
 summary(model_ANOVA)
 ```
 
-We have a significant difference somewhere between our conditions - the F is the 
+We have a significant difference *somewhere* between our conditions - the F is the 
 ratio of variance explained by our model to the variance not explained by our 
 model.  We now need to conduct pairwise comparisons to determine where the 
 difference lies as ANOVA on its own cannot tell us this for cases where factors
@@ -273,6 +268,9 @@ have > 2 levels (or if you have interactions between factors).
 ```{r}
 emmeans(model_ANOVA, pairwise ~ cyl)
 ```
+
+We can see above that each level of the factor `cyl` differs from each other
+level.
 
 Let's finish by visualising the data we conducted the ANOVA over - but this time
 with a violin plot so we can see the shape of the distribution of our data
