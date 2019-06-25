@@ -29,7 +29,7 @@ The difference we are investigating equates to a Cohen's d of .5
 as (1010-1000)/20 = .5.  This is known as a medium effect size.
 
 First let's plot an approximation of the population for each sample. Let's
-sample 1000 people from each group. Always remember to `set.seed()` to ensure
+sample 10,000 people from each group. Always remember to `set.seed()` to ensure
 things are reproducible.
 
 ```{r}
